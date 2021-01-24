@@ -307,7 +307,7 @@ def DFS_cython_solve(bytes fc, int maxdeldep, DTYPE_t [:] corner, \
     if tmpscore > score:
         score = tmpscore
     start_dist = score
-    print('Starting Distance: {0:d}'.format(start_dist))
+    #print('Starting Distance: {0:d}'.format(start_dist))
     MAXLEVEL = start_dist + maxdeldep
 
     
@@ -367,7 +367,7 @@ def DFS_cython_solve(bytes fc, int maxdeldep, DTYPE_t [:] corner, \
         curLevel = buffdata[bp][0]
         if curLevel == 1:
             turn1level = turn1level + 1
-            print("Starting First Turn Level: {0:d} {1:d}".format(turn1level, buffdata[bp][1]))
+            #print("Starting First Turn Level: {0:d} {1:d}".format(turn1level, buffdata[bp][1]))
         if (curLevel < MAXLEVEL):
             bpt = <stdint.uint8_t*>&(buffmoves[bp])
             memcpy(tmpfc, bpt, 48)

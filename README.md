@@ -7,18 +7,22 @@ Requires python with cython and numpy. For cython, I am unsure whether it comes 
 ```
 python setup.py build_ext --inplace
 ```
+There will be numerous warnings about 'code will never be executed' and numpy deprecation. Those are fine.
+ 
 2. Download the pattern databases to the local work directory. There are 4 files that are compressed numpy save (.npz) files. The 4 files together use ~550Mb space. I have used the files on both linux and MacOS systems.
 * [8 Corner cubie with orientation DB](https://www.dropbox.com/s/67gdq50lj7oyped/rubik_corner_db.npz?dl=0)
 * [All 12 Edge cubies disregarding orientation DB](https://www.dropbox.com/s/58nhe00ev5m02ey/rubik_alledge_db.npz?dl=0)
 * [Subset of 7 Edge cubies with orientation DB](https://www.dropbox.com/s/i174rt1k4t5yp5o/rubik_edge1_DFS_12p7_db.npz?dl=0)
 * [Other subset of 7 Edge cubies with orientation DB](https://www.dropbox.com/s/9qqt1yd63lbgxjo/rubik_edge2_DFS_12p7_db.npz?dl=0)
 
-3. The multiprocessing Rubik's cube solver is the python routine rubik_cython_roll_buffdq_solve_MP2.py. You need to edit the python file in order to set the number of processors you want to use with variable USENCPUS and input the scrambled cube in the begcubefaces dictionary. Consult the section below 'Entering Scrambled Cube to Solve' for the nomenclature of the dictionary.
+3. The multiprocessing Rubik's cube solver is the python routine rubik_cython_roll_buffdq_solve_MP2.py. It uses the number of cores found by multiprocessing.cpu_count(). If you want a different number of cores to use, edit the variable USENCPUS. Hardcode the input the scrambled cube face colors in the begcubefaces dictionary. Consult the section below 'Entering Scrambled Cube to Solve' for the nomenclature of the dictionary.
 
 4. Run the program to solve cube
 ```
 python rubik_cython_roll_buffdq_solve_MP2.py
 ```
+
+The begcubefaces that comes with the program is the cube after a 15 move scramble. It should return the solution with 15 moves. The solution is listed in three variants an internal number assigned to each move, my non-standard move nomenclature, and the standard nomenclature. See below 'Entering Scrambled Cube to Solve' for an explanation of the move nomenclature. IMPORTANT: Since the multiprocessing starts after taking 2 turns, the turns shown after 'Root moves where solution was found' need to be performed before the other move list. The example 15 move scrambled cube is unscrambled with the moves D_F'_U'_L_D'_B'_R'_D'_F'_B'_D'_U'_B'_U'_L'.
 
 
 # Motivation

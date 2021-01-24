@@ -406,11 +406,30 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
                         print("Solve Cube Moves N: {0:d}".format(tmpdat[0]))
                         tmpdat[1] = cmv
                         tmpdat[tmpdat[0] +1] = cmv
-                        str = ''
+                        str1 = ''
+                        str2 = ''
+                        str3 = ''
+                        rotnames = ["DR","DL","DH",\
+                                    "UR","UL","UH",\
+                                    "RU","RD","RH",\
+                                    "LU","LD","LH",\
+                                    "FC","FG","FH",\
+                                    "BC","BG","BH"]
+                        char_move_dict = ["D","D'","D2",\
+                                          "U'","U","U2",\
+                                          "R","R'","R2",\
+                                          "L'","L","L2",\
+                                          "F","F'","F2",\
+                                          "B'","B","B2"]
+
                         for i in range(2,23):
                             if not tmpdat[i] == -1:
-                                str = str + "_{0:d}".format(tmpdat[i])
-                        print(str)
+                                str1 = str1 + "_{0:d}".format(tmpdat[i])
+                                str2 = str2 + "_{0}".format(rotnames[tmpdat[i]])
+                                str3 = str3 + "_{0}".format(char_move_dict[tmpdat[i]])
+                        print(str1)
+                        print(str2)
+                        print(str3)
                         notSolved = 0
                         return 2
                     # Debug turns 
