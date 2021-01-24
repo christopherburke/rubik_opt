@@ -1,6 +1,26 @@
 # rubik_opt
 Rubik's Cube optimal move solver. A python/cython solution to unscramble the Rubik's Cube in the fewest number of moves.
 
+# Installation
+Requires python with cython and numpy. For cython, I am unsure whether it comes with all the compilers and development libraries that it needs or if one needs to also have the compiler/development libraries installed separately. I use Anaconda for my python install. This has been tested on linux and MacOS. The setup.py and routines place everything in the local directory where you cloned/downloaded the source for this package. Nothing is installed to the python system.
+1. Build the cython codes
+```
+python setup.py build_ext --inplace
+```
+2. Download the pattern databases to the local work directory. There are 4 files that are compressed numpy save (.npz) files. The 4 files together use ~550Mb space. I have used the files on both linux and MacOS systems.
+* [8 Corner cubie with orientation DB](https://www.dropbox.com/s/67gdq50lj7oyped/rubik_corner_db.npz?dl=0)
+* [All 12 Edge cubies disregarding orientation DB](https://www.dropbox.com/s/58nhe00ev5m02ey/rubik_alledge_db.npz?dl=0)
+* [Subset of 7 Edge cubies with orientation DB](https://www.dropbox.com/s/i174rt1k4t5yp5o/rubik_edge1_DFS_12p7_db.npz?dl=0)
+* [Other subset of 7 Edge cubies with orientation DB](https://www.dropbox.com/s/9qqt1yd63lbgxjo/rubik_edge2_DFS_12p7_db.npz?dl=0)
+
+3. The multiprocessing Rubik's cube solver is the python routine rubik_cython_roll_buffdq_solve_MP2.py. You need to edit the python file in order to set the number of processors you want to use with variable USENCPUS and input the scrambled cube in the begcubefaces dictionary. Consult the section below 'Entering Scrambled Cube to Solve' for the nomenclature of the dictionary.
+
+4. Run the program to solve cube
+```
+python rubik_cython_roll_buffdq_solve_MP2.py
+```
+
+
 # Motivation
 This code was inspired by watching the Netflix show Speedcubers about the current champions and simultaneously I was learning more about graph traversal algorithms ("Grokking Algorithms" by Aditya Bhargava, such a good book for introducing algorithms before diving into dry textbooks). It seemed like a perfect way to learn graph traversal algorithms with an actual problem to solve, the Rubik's Cube. Also, ya know, 2020 & 2021 needed some things to distract my mind. I started with writing a solver for a single cube to go from where it was to where I wanted it to go without messing up previously placed cubes. I stumbled into this blog post written by [Benjamin Botto](https://medium.com/@benjamin.botto/implementing-an-optimal-rubiks-cube-solver-using-korf-s-algorithm-bf750b332cf9 "Optimal Rubik's Cube Solving"), and I fell down a rabbit hole. Along the way I learned about Breadth First Search, Depth First Search, speeding up python with cython, dabbled in writing c++ for the first time, lehmer code (such a cool thing), A* graph traversal using distance to end pattern database, and implementing shared memory for the multiprocessing step. The solution method described in Ben Botto's blog (BBB, hereafter) excellently details the work from [Richard Korf, 1997](https://www.cs.princeton.edu/courses/archive/fall06/cos402/papers/korfrubik.pdf).
 
