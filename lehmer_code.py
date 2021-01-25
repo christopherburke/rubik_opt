@@ -4,6 +4,9 @@
 Created on Mon Nov 30 18:53:52 2020
 
 @author: cjburke
+Based on Ben Botto Blog post
+https://medium.com/@benjamin.botto/implementing-an-optimal-rubiks-cube-solver-using-korf-s-algorithm-bf750b332cf9
+See that for inspiration
 """
 import numpy as np
 
@@ -63,9 +66,6 @@ class lehmer_code():
             #    saveseen = lehmer[i]
 
         return np.sum(lehmer*self.useFacts)
-        
-        
-        
         
 if __name__ == '__main__':
     
