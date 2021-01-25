@@ -14,7 +14,6 @@ With a precalculated corner database of minimum length to solve
 
 import numpy as np
 from collections import deque as dq
-import rubik_cython_movesonly as rcm
 import copy
 import lehmer_code as lc
 

@@ -5,6 +5,18 @@ Created on Thu Dec  3 13:28:28 2020
 
 @author: cjburke
 python setup.py build_ext --inplace
+Solve the rubik's cube with a Iterative Deepening Depth First Search
+With a precalculated pattern database of minimum length to solve 
+  for various configurations.
+  This borrows heavily from the excellent Blog piece and code by
+  Benjamin Botto https://github.com/benbotto
+  https://medium.com/@benjamin.botto/implementing-an-optimal-rubiks-cube-solver-using-korf-s-algorithm-bf750b332cf9
+  Definitely read the blog about this before you dive into the code and comments
+  Hereafter in the comments I will refer to this blog post as BottoB
+  Note: The cython code here is what is run for finding the solution
+  There are surrogates for nearly all these functions in the python
+  side. I will only add comments here that have not been addressed
+  on the python side, in the README.md or BottoB.
 """
 cimport cython
 
@@ -20,6 +32,11 @@ ctypedef numpy.int16_t DTYPE_t
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 
 #https://stackoverflow.com/questions/776508/best-practices-for-circular-shift-rotate-operations-in-c
+# Here is where the circular shift of bits takes place
+# for the face move
+# BottoB uses an assembly intrinsic to do this
+#  Since the move is not the bottleneck I have not tried to the assembly
+#   intrinsic
 cdef void rollface( stdint.uint64_t* arr, int movecount):
     cdef stdint.uint64_t fullval, n, newval
     fullval = arr[0]
@@ -30,6 +47,11 @@ cdef void rollface( stdint.uint64_t* arr, int movecount):
         newval = (fullval<<n) | (fullval>>(64-n))
     arr[0] = newval
 
+# These are all the indices needed to perform the side face moves
+# It is defined in the cython module rather than in the function
+# since it appeared to save time defining it once rather than every
+# call to the side move. Cython variables with cdef are static and
+# remain defined between calls and they are visible in the funciton scope
 cdef int[18][8] lhs = [[26,28,2,4,10,12,18,20],[10,12,18,20,26,28,2,4],[18,20,26,28,2,4,10,12],
                 [30,24,6,0,14,8,22,16],[14,8,22,16,30,24,6,0],[22,16,30,24,6,0,14,8],
                 [44,46,4,6,32,34,16,18],[32,34,16,18,44,46,4,6],[16,18,44,46,4,6,32,34],
@@ -43,7 +65,10 @@ cdef int[18][8] rhs = [[2,4,10,12,18,20,26,28],[2,4,10,12,18,20,26,28],[2,4,10,1
                 [12,14,34,36,24,26,42,44],[12,14,34,36,24,26,42,44],[12,14,34,36,24,26,42,44],
                 [8,10,46,40,28,30,38,32],[8,10,46,40,28,30,38,32],[8,10,46,40,28,30,38,32]]
 
-
+# Here is where the sides are moved using the lhs and rhs constants above
+# The principle is to move and copy two bytes at a time casting them
+#  to uint16_t when they are stored as uint8_t
+#  This idea comes straight from BottoB code
 cdef void dosides( stdint.uint8_t* out, stdint.uint8_t* orig, int cmv):
 
     cdef int* l
@@ -68,13 +93,21 @@ cdef int[18] move2face = [5,5,5,4,4,4,1,1,1,3,3,3,2,2,2,0,0,0]
 # give the number and direction of the roll needed to move face elements during a move
 cdef int[18] move2shifts = [2,-2,4,-2,2,4,2,-2,4,-2,2,4,2,-2,4,-2,2,4]
 
+# This is where the move is done. It is restricted to only do the move ids
+# that are given in allowed_moves vector. The only pruning done here
+#  is the redundant back-to-back moves move score pruning is done elsewhere
+# INPUT
+# fc - The initial 48 faceids
+# newmoves (also output) - Store the resulting faceids after move
+# allowed_moves - Array of moves that are allowed  
 cdef move_with_cython(stdint.uint8_t* fc, stdint.uint8_t* newmoves, int* allowed_moves):
     
     cdef Py_ssize_t k1, kuse, doface_idx
     # Copy the python list to c memory
     cdef size_t nMem = 48
     
-    # This is where we move faces from the 2D transition input matrix for all 18 rubik moves
+    # This is where we move faces using the face roll and
+    #  side faces separately
     for k1 in range(18):
         kuse = allowed_moves[k1]
         if not kuse == -1:
@@ -82,10 +115,15 @@ cdef move_with_cython(stdint.uint8_t* fc, stdint.uint8_t* newmoves, int* allowed
             memcpy(&newmoves[k1*48], fc, nMem * sizeof(stdint.uint8_t))
             # Now do the rolling of faces for this move in place
             doface_idx = move2face[kuse] * 8
+            # The doface_idx and move number tells use where to point to
+            #  in the face array. 64 bit cast to move all 8 bytes at once
             rollface(<stdint.uint64_t*>&newmoves[k1*48+doface_idx], move2shifts[kuse])
+            # Do the side face moves
             dosides(&newmoves[k1*48], fc, kuse)
     return 0
 
+# again putting constant factors once in module saves time
+# and they are availble in the function scope
 # Hard code factors for corner lehmer coding
 cdef int[8] corner_p_idx = [42,44,40,46,36,34,38,32]
 cdef int[8] corner_factors = [5040,720,120,24,6,2,1,1]
@@ -104,6 +142,8 @@ cdef int[7] edge1_factors = [332640,30240,3024,336,42,6,1]
 cdef int[7] edge1_binaryfactors = [64,32,16,8,4,2,1]
 cdef int[7] edge2_p_idx = [41,47,13,9,37,39,43]
 
+# See BottoB for description
+#  This is the slowest function; 3 times slower than the face move
 cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
     
     cdef int nCrnr = 8
@@ -235,11 +275,24 @@ cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
     finalstates[3] = rshift + numOnes
 
 
+# Main entry point for performing DFS search from the initial face configuration
+# up to maxlev for the search
+# INPUT
+# fc - input 48 faceids 
+# maxlev - stop search at this level
+# strtlev - commence search at this level
+# strtmv - last move that lead to the input fc cube configuration
+# corner, alledge, edge1, edge2 - reference to the pattern databases
+#  that provide the number of moves needed to solve the given sub configuration
+# OUTPUT - retval == 2 if solution found ; 0 if not
 def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] corner, \
                      DTYPE_t [:] alledge, DTYPE_t [:] edge1, DTYPE_t [:] edge2):
     
-    cdef int MAXLEVEL
-    cdef int MAXBUFF
+    cdef int MAXLEVEL # max level searched
+    cdef int MAXBUFF # The DFS stack is maintained in a 2D array
+                # This sets the maximum size of the stack
+                # even up to level 19 I have not seen more than 200
+                # maxfill so this buffer is comfortably large
     MAXBUFF = 1000
     # Table to prune redundant back to back moves
     cdef int[19][18] ignore_moves = [
@@ -263,23 +316,29 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
     [0,1,2,3,4,5,6,7,8,9,10,11,-1,-1,-1,-1,-1,-1],
     [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]]
     
-    cdef int bp
-    cdef stdint.uint8_t[1000][48]  buffmoves 
-    cdef stdint.uint8_t[18][48] newmoves
-    cdef stdint.uint8_t[48] tmpfc
-    cdef stdint.uint8_t* mvp
-    cdef stdint.uint8_t* bpt
-    cdef int[1000][23] buffdata
-    cdef int[23] tmpdat
-    cdef int* dpt
+    cdef int bp # Points to the current head of the stack
+    cdef stdint.uint8_t[1000][48]  buffmoves # The faceid buffer
+        # each row contains the 48 faceids for a cube configuration
+    cdef stdint.uint8_t[18][48] newmoves # This stores output configurations
+        # after the allowed moves
+    cdef stdint.uint8_t[48] tmpfc # store faceids for a cube configureation
+    cdef stdint.uint8_t* mvp # pointer for faceid data
+    cdef stdint.uint8_t* bpt # pointer to move buffer data
+    cdef int[1000][23] buffdata # This auxillary data buffer is filled
+        # in parallel with the faceid buffer
+        #  it stores the current level, last moveid, and move history
+        #  room to store a history up to 20 moves
+    cdef int[23] tmpdat # temp storage for auxillary data
+    cdef int* dpt # pointer to auxillary data
     
     cdef int lastMove, curLevel, cmv, turn1level
-    cdef long totCnt
+    cdef long totCnt # keep track of total # of moves
     cdef int notSolved, notEmpty
     cdef Py_ssize_t i, k, kk
-    cdef int highn
-    cdef int lehcode[4]
-    cdef int score, tmpscore, start_dist, cs, ce, ce1, ce2
+    cdef int highn # keep track of largest buffer fill encountered
+    cdef int lehcode[4] # keep lehmer codes
+    cdef int score, tmpscore, start_dist, cs, ce, ce1, ce2 # scores/ distance
+        # to solving for the pattern databases
     curLevel = strtlev
     lastMove = strtmv
     # copy the original input face vector into the c variables
@@ -292,6 +351,7 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
     # configure tmpdat to start with -1
     for i in range(23):
         tmpdat[i] = -1
+    # DEBUG LINES
     # Test lehmer coding on solved cube
     #print('Move:',strtmv)
     #lehmer_code_faces(fc, lehcode)
@@ -314,21 +374,21 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
 #    start_dist = score
     #print('Starting Distance: {0:d}'.format(start_dist))
     MAXLEVEL = maxlev
-
     
     # Do the initial filling of buff moves and buffdata with the first moves
     bp = -1
     turn1level = 0
     totCnt = 0
     highn = 0
+    # Perform the first set of moves
     move_with_cython(tmpfc, <stdint.uint8_t*>newmoves, ignore_moves[lastMove])
     for i in range(18):
-        cmv = ignore_moves[lastMove][i]
-        if not cmv == -1:
+        cmv = ignore_moves[lastMove][i] 
+        if not cmv == -1: # This ignores the redundant moves
             # Get Score of this configuration
             mvp = <stdint.uint8_t*>&(newmoves[i])
             lehmer_code_faces(mvp, lehcode)
-            
+            # score is the maximum among all the databases
             score = corner[lehcode[0]]
             tmpscore = alledge[lehcode[1]]
             if tmpscore > score:
@@ -339,17 +399,20 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
             tmpscore = edge2[lehcode[3]]
             if tmpscore > score:
                 score = tmpscore
-            if score <= MAXLEVEL:            
-                bp = bp + 1
-                bpt = <stdint.uint8_t*>&(buffmoves[bp])
-                memcpy(bpt, mvp, 48)
-                tmpdat[0] = curLevel
+            if score <= MAXLEVEL: # This is the pruning by score step
+                   # if there is too many steps needed for the max number
+                   # allowed we can prune this configure
+                   #  otherwise if it is <= MAXLEVEL record this step
+                bp = bp + 1 # incremnt buffer head location
+                bpt = <stdint.uint8_t*>&(buffmoves[bp]) # move buffer pointer
+                memcpy(bpt, mvp, 48) # copy configuration to move buffer
+                tmpdat[0] = curLevel # record auxillary data as well
                 tmpdat[1] = cmv
                 tmpdat[curLevel +1] = cmv
-                dpt = <int*>&(buffdata[bp])
-                memcpy(dpt, tmpdat, sizeof(int)*23)
+                dpt = <int*>&(buffdata[bp]) # pointer to aux data buffer
+                memcpy(dpt, tmpdat, sizeof(int)*23) # copy aux data over
 
-    # DEBUG the first moves are correct
+    # DEBUG to confirm that the first moves are correct
 #    facecodechars = ["c012","e051","c051","e091","c062","e061","c021","e011",\
 #                 "c022","e060","c061","e101","c072","e070","c031","e021",\
 #                 "c032","e071","c071","e111","c082","e081","c041","e031",\
@@ -362,25 +425,29 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
 #            j = ia[k]
 #            print("{0} {1:d} {2:d}".format(facecodechars[j], newmoves[i][j], i))
  
+    # Keep iterating over the DFS stack
     notSolved = 1
     notEmpty = 1
     frstpass = 0
     while notSolved and notEmpty:
-        # keep of track of when we get back to the first level by printing out move
         curLevel = buffdata[bp][0]
-        if (curLevel < MAXLEVEL):
-            bpt = <stdint.uint8_t*>&(buffmoves[bp])
+        if (curLevel < MAXLEVEL): # make sure this move does not exceed level
+            bpt = <stdint.uint8_t*>&(buffmoves[bp]) # copy face config to temporary storage
             memcpy(tmpfc, bpt, 48)
             lastMove = buffdata[bp][1]
+            # perform all allowed moves
             move_with_cython(tmpfc, <stdint.uint8_t*>newmoves, ignore_moves[lastMove])
-            dpt = <int*>&(buffdata[bp])
+            dpt = <int*>&(buffdata[bp]) # copy aux data to temp storage
             memcpy(tmpdat, dpt, sizeof(int)*23)
-            bp = bp - 1
+            bp = bp - 1 # pop the move off just by decrementing head location
+
+            # go through newmoves and see which ones pass the score test
             for i in range(18):
                 cmv = ignore_moves[lastMove][i]
                 if not cmv == -1:
                     # Get Score of this configuration
                     mvp = <stdint.uint8_t*>&(newmoves[i])
+                    # get distance to end from databases
                     lehmer_code_faces(mvp, lehcode)
                     score = corner[lehcode[0]]
                     cs = score
@@ -431,11 +498,13 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
                         print(str2)
                         print(str3)
                         notSolved = 0
-                        return 2
+                        return 2 # Found solution Bye!
                     # Debug turns 
                     #if tmpdat[2] == 1 and tmpdat[3] == 4 and tmpdat[4] == 13 and tmpdat[5] == 16 and tmpdat[6] == 7 and cmv == 10 and tmpdat[8] == -1 and tmpdat[9] == -1:
                     #    print(score, curLevel, MAXLEVEL, cs, ce, ce1, ce2)
-                    if score+curLevel < MAXLEVEL and curLevel < MAXLEVEL:         
+                    if score+curLevel < MAXLEVEL and curLevel < MAXLEVEL:
+                        # This moves passes the score check add it to the stack
+                        # along with aux data
                         bp = bp + 1
                         bpt = <stdint.uint8_t*>&(buffmoves[bp])
                         memcpy(bpt, mvp, 48)
@@ -463,6 +532,6 @@ def DFS_cython_solve(bytes fc, int maxlev, int strtlev, int strtmv, DTYPE_t [:] 
     #print("No Solution Found")
     #print("Max Buffer Fill: {0:d}".format(highn))
     #print("Total Moves: {0:d}".format(totCnt))
-    return 0
+    return 0 # no solution found result
             
             
