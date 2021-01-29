@@ -360,7 +360,8 @@ if __name__ == '__main__':
     init_faceids = bcube.get_start_faceids(begcubefaces).tolist()
     #print(init_faceids)
 
-
+    # OVERRIDE the begcubefaces result with 
+    #  the 17 turn example from https://github.com/benbotto/rubiks-cube-cracker
     init_faceids = [9, 32, 29, 68, 13, 41, 24, 76, 25, 40, 12, 61, 21, 64, 1, 52, 2, 65, 20, 72, 6, 36, 18, 44, 16, 37, 5, 56, 30, 33, 8, 49, 26, 53, 0, 45, 17, 48, 10, 77, 28, 57, 4, 73, 22, 60, 14, 69]
     # Get the initial cube distance
     lehcode = lc.lehmer_code(8)

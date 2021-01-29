@@ -131,20 +131,16 @@ cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
     cdef unsigned short[7] edge1_lehmer
     cdef unsigned short edge1_seen
     
-    #str = ''
     for i2 in range(nCrnr):
         corner_ids[i2] = fc[corner_p_idx[i2]]
-    #    str = str + ',{0:d}'.format(corner_ids[i2])
-    #print('Corner Faces Used ',str)
-    for i2 in range(nCrnr):
         corner_p[i2] = corner_ids[i2] >> 2
         if i2 < nCrnr - 1:
             corner_op[i2] = corner_ids[i2] & 3
     corner_lehmer[0] = corner_p[0]
     corner_seen = 0
-    corner_seen = corner_seen | (0b1 << (nCrnr - corner_p[0] - 1))
+    corner_seen = corner_seen | (0b1 << (7 - corner_p[0]))
     for i2 in range(1,nCrnr):
-        corner_seen = corner_seen | (0b1 << (nCrnr - corner_p[i2] - 1 ))
+        corner_seen = corner_seen | (0b1 << (7 - corner_p[i2] ))
         rshift = nCrnr - corner_p[i2]
         numOnes = corner_bincount[corner_seen >> rshift]
         corner_lehmer[i2] = corner_p[i2] - numOnes
@@ -167,9 +163,9 @@ cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
     #print('Edge Faces Used: ',str)
     edge_lehmer[0] = edge_p[0]
     edge_seen = 0
-    edge_seen = edge_seen | (0b1 << (nEdge - edge_p[0] - 1))
+    edge_seen = edge_seen | (0b1 << (11 - edge_p[0] ))
     for i2 in range(1,nEdge):
-        edge_seen = edge_seen | (0b1 << (nEdge - edge_p[i2] - 1 ))
+        edge_seen = edge_seen | (0b1 << (11 - edge_p[i2] ))
         rshift = nEdge - edge_p[i2]
         numOnes = edge_bincount[edge_seen >> rshift]
         edge_lehmer[i2] = edge_p[i2] - numOnes
@@ -181,14 +177,13 @@ cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
     # Calculate the edge1 state
     for i2 in range(nEdge1):
         edge1_ids[i2] = fc[edge1_p_idx[i2]]
-    for i2 in range(nEdge1):
         edge1_p[i2] = (edge1_ids[i2] >> 2) - 8 # The -8 is there because the corners are listed first
         edge1_op[i2] = edge1_ids[i2] & 3
     edge1_lehmer[0] = edge1_p[0]
     edge1_seen = 0
-    edge1_seen = edge1_seen | (0b1 << (nEdge - edge1_p[0] - 1))
+    edge1_seen = edge1_seen | (0b1 << (11 - edge1_p[0] ))
     for i2 in range(1,nEdge1):
-        edge1_seen = edge1_seen | (0b1 << (nEdge - edge1_p[i2] - 1 ))
+        edge1_seen = edge1_seen | (0b1 << (11 - edge1_p[i2] ))
         rshift = nEdge - edge1_p[i2]
         numOnes = edge_bincount[edge1_seen >> rshift]
         edge1_lehmer[i2] = edge1_p[i2] - numOnes
@@ -209,14 +204,13 @@ cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
     # Calculate the edge12 state
     for i2 in range(nEdge1):
         edge1_ids[i2] = fc[edge2_p_idx[i2]]
-    for i2 in range(nEdge1):
         edge1_p[i2] = (edge1_ids[i2] >> 2) - 8 # The -8 is there because the corners are listed first
         edge1_op[i2] = edge1_ids[i2] & 3
     edge1_lehmer[0] = edge1_p[0]
     edge1_seen = 0
-    edge1_seen = edge1_seen | (0b1 << (nEdge - edge1_p[0] - 1))
+    edge1_seen = edge1_seen | (0b1 << (11 - edge1_p[0]))
     for i2 in range(1,nEdge1):
-        edge1_seen = edge1_seen | (0b1 << (nEdge - edge1_p[i2] - 1 ))
+        edge1_seen = edge1_seen | (0b1 << (11 - edge1_p[i2] ))
         rshift = nEdge - edge1_p[i2]
         numOnes = edge_bincount[edge1_seen >> rshift]
         edge1_lehmer[i2] = edge1_p[i2] - numOnes
@@ -233,6 +227,7 @@ cdef void lehmer_code_faces(stdint.uint8_t* fc, int* finalstates):
         numOnes = numOnes + edge1_op[i2] * edge1_binaryfactors[i2]
 
     finalstates[3] = rshift + numOnes
+
 
 
 def DFS_cython_solve(bytes fc, int maxdeldep, DTYPE_t [:] corner, \

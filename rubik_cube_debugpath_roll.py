@@ -463,6 +463,7 @@ class rubiks_cube():
 
 if __name__ == '__main__':
     
+    # 17 turn example from https://github.com/benbotto/rubiks-cube-cracker
     char_move = "L' U B D' L' F' D2 F2 R2 U' L' F' D R' L F2 D R2 D B U' B2 D2 R D2 F U2 L' B2 U2 R' L2 U2 B2 L' B2 D' U' F2 U' F' D R B' L' B2 L2 D' U L B' D U2 F2 L2 B D2 L' D2 U' L' F' U' F2 D L2 B2 R' F' U R D B' F' U' L' F2 U F2 D' F2 L2 B' U' L U L' B D2 L' D R' U2 F2 D' U' L U R2 L'"
     char_move = char_move.split()
     char_move_dict = {"D":0,"D'":1,"D2":2,\
@@ -480,6 +481,7 @@ if __name__ == '__main__':
 #                9:"LU", 10:"LD", 11:"LH",\
 #                12:"FC", 13:"FG", 14:"FH",\
 #                15:"BC", 16:"BG", 17:"BH"}
+    print('Integer Move Ids')
     print(moves)
     #moves = [0,3,6,9,12,15,0,3,6,9,12,15,0,3]
     # initialize cube
@@ -493,6 +495,7 @@ if __name__ == '__main__':
                     4, 36, 8, 40, 12, 44, 0, 32,\
                     16, 76, 28, 72, 24, 68, 20, 64]
 
+    print("Loading Pattern Databases")
     # Load the corner config to solve turns DB
     with np.load('rubik_corner_db.npz') as data:
         cornerDB = data['db']
